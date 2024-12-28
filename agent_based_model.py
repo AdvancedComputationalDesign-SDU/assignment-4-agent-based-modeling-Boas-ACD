@@ -1,67 +1,60 @@
 """
 Assignment 4: Agent-Based Model for Structural Tessellation Generation
 
-Author: Your Name
+Author: Boas Olesen
 
 Description:
 This script implements an agent-based model using Object-Oriented Programming (OOP) principles.
-It simulates the behavior of agents to generate structural patterns, exploring how changes in
-rules and parameters affect the resulting form.
+It simulates the behavior of shoppers (agents) to generate flow patterns, exploring how changes in
+rules and parameters affect the resulting flow in a pedestrian patterns.
 
-Note: This script is intended to be used within Grasshopper's Python scripting component or as a standalone Python script.
+Note: This script is being developed within Grasshopper's Python scripting component, 
+meaning this is the main component, which other helper components should go into.
 """
 
 # Import necessary libraries
-import random
-import math
+import Rhino
+import rhinoscriptsyntax as rs
+import Rhino.Geometry as rg
 
 # If using Rhino/Grasshopper for visualization
 # import Rhino
 # import Rhino.Geometry as rg
 
-# Define the Agent class
-class Agent:
-    """
-    A class to represent an agent in the simulation.
+# Empty Lists
+Lines = []
+Points = []
 
-    Attributes:
-    - position: The current position of the agent (e.g., as a tuple or vector).
-    - velocity: The current velocity of the agent.
-    - other attributes as needed.
+"""
+### Inputs
+Agent: Agent function
+srf: Boundary surface
+start_position: Entry point for the agent
+steps: Number of steps in the simulation
+max_speed: Maximum Speed for the agent
+slow_radius: Proximity for the agent to the target to slow down
+"""
 
-    Methods:
-    - move(): Updates the agent's position based on its velocity and other factors.
-    - interact(agents): Defines how the agent interacts with other agents.
-    - update(): Updates the agent's state.
-    """
-    def __init__(self, position, velocity):
-        self.position = position
-        self.velocity = velocity
-        # Initialize other attributes as needed
+# Agent import
+agent = Agent(srf, start_position)
 
-    def move(self):
-        """
-        Update the agent's position based on its velocity.
-        """
-        # TODO: Implement movement logic
-        pass
+# Simulate agent seeking the goal
+prev_position = agent.position  # Store previous position for path tracing
+for step in range(steps):  # steps in the simulation
+    agent.seek_target(target, max_speed, slow_radius)
+    agent.move()
+    # print(f"Step {step}: Agent position: {agent.position}, Distance to goal: {agent.dist(target)}")
 
-    def interact(self, agents):
-        """
-        Define interactions with other agents.
+    # Visualize the agent's movement
+    Lines.append(rg.Line(prev_position, agent.position))
+    Points.append(agent.position)
+    prev_position = agent.position
 
-        Parameters:
-        - agents: List of other agents in the simulation.
-        """
-        # TODO: Implement interaction logic
-        pass
+    # Stop if the agent is close enough to the goal
+    if agent.dist(target) < 0.1:
+        print("target reached!")
+        break
 
-    def update(self):
-        """
-        Update the agent's state.
-        """
-        # TODO: Implement any additional state updates
-        pass
 
 # Define additional classes if needed (e.g., Environment, Obstacle)
 
