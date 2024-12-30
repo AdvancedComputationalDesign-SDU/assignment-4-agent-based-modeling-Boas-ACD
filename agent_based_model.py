@@ -191,40 +191,106 @@ for step in range(steps):  # steps in the simulation
         print("target reached!")
         break
 
+# Empty Lists
+Lines = []
+Points = []
+
+print(f"Obstacles input: {obstacles}")
+
+"""
+### simulation Inputs
+srf: Boundary surface
+start_position: Entry point for the agent
+target: the target which the agent shall reach
+steps: Number of steps in the simulation
+max_speed: Maximum Speed for the agent
+slow_radius: Proximity for the agent to the target to slow down
+obstacles: geometries to be avoided
+avoidance_range: distance from obstacles to avoid
+avoidance_factor: Repulsion force factor
+boost_factor: A factor to help the agent from stalling
+side_push_factor: a factor to help push the agent around obstacles
+"""
+# Flatten obstacles from input
+obstacles_flatten = []
+if isinstance(obstacles, list):  # Ensures it's a list of obstacles
+    for obs in obstacles:
+        if isinstance(obs, rg.Rectangle3d):
+            obstacles_flatten.append(obs.ToNurbsCurve())  # Convert to a Curve
+        else:
+            obstacles_flatten.append(obs)  # Add directly if already a Curve
+else:
+    # If it's a single obstacle, convert it into a list
+    if isinstance(obstacles, rg.Rectangle3d):
+        obstacles_flatten.append(obstacles.ToNurbsCurve())  # Convert to Curve
+    else:
+        obstacles_flatten.append(obstacles)  # Add directly if already a Curve
+
+# Debug output to confirm
+print(f"Flattened obstacles: {obstacles_flatten}")
+# Agent import
+agent = Agent(srf, start_position)
+
+# Simulate agent seeking the goal
+prev_position = agent.position  # Store previous position for path tracing
+for step in range(steps):  # steps in the simulation 
+    # Seek Target
+    agent.seek_target(target, max_speed, slow_radius)
+
+    # Avoid Obstacles
+    agent.avoid_obstacles(obstacles_flatten, avoidance_range, avoidance_factor, boost_factor, side_push_factor)
+
+    # Move Agent
+    agent.move()
+    
+
+    # Visualize the agent's movement
+    Lines.append(rg.Line(prev_position, agent.position))
+    Points.append(agent.position)
+    prev_position = agent.position
+
+    # Stop if the agent is close enough to the target
+    if agent.dist(target) < 1:
+        print("target reached!")
+        break
+
+# Debug print statements
+print("Simulation complete.")
+print(f"Final Agent Position: {agent.position}")
 
 # Define additional classes if needed (e.g., Environment, Obstacle)
 
-# Simulation parameters
-num_agents = 100  # Number of agents
-num_steps = 100   # Number of simulation steps
-agents = []       # List to hold agent instances
+# # Simulation parameters
+# num_agents = 100  # Number of agents
+# num_steps = 100   # Number of simulation steps
+# agents = []       # List to hold agent instances
 
-# Initialize agents
-for i in range(num_agents):
-    # Initialize agents with random positions and velocities
-    position = (random.uniform(0, 10), random.uniform(0, 10), random.uniform(0, 10))
-    velocity = (random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))
-    agent = Agent(position, velocity)
-    agents.append(agent)
+# # Initialize agents
+# for i in range(num_agents):
+#     # Initialize agents with random positions and velocities
+#     position = (random.uniform(0, 10), random.uniform(0, 10), random.uniform(0, 10))
+#     velocity = (random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))
+#     agent = Agent(position, velocity)
+#     agents.append(agent)
 
-# Simulation loop
-for step in range(num_steps):
-    # Update each agent
-    for agent in agents:
-        agent.interact(agents)
-        agent.move()
-        agent.update()
+# # Simulation loop
+# for step in range(num_steps):
+#     # Update each agent
+#     for agent in agents:
+#         agent.interact(agents)
+#         agent.move()
+#         agent.update()
 
-    # TODO: Collect data or update visualization
-    # For example, append agent positions to a list for plotting
+#     # TODO: Collect data or update visualization
+#     # For example, append agent positions to a list for plotting
 
-# After simulation, process results
-# TODO: Generate geometry or visualization based on agent data
+# # After simulation, process results
+# # TODO: Generate geometry or visualization based on agent data
 
-# Visualization code (if using Rhino/Grasshopper)
-# For example, create points or lines based on agent positions
+# # Visualization code (if using Rhino/Grasshopper)
+# # For example, create points or lines based on agent positions
 
-# Output variables (connect to Grasshopper outputs if applicable)
-# agent_positions = [agent.position for agent in agents]
+# # Output variables (connect to Grasshopper outputs if applicable)
+# # agent_positions = [agent.position for agent in agents]
 
-# If running as a standalone script, include visualization using matplotlib or other libraries
+# # If running as a standalone script, include visualization using matplotlib or other libraries
