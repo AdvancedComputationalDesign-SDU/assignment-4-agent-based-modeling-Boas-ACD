@@ -55,11 +55,11 @@ class Agent:
         # Update position
         self.position += self.velocity
 
-    def seek_target(self, target, max_speed, slow_radius):
+    def seek_target(self, current_target, max_speed, slow_radius):
         """
         Adjust velocity to seek target
         """
-        target_point = rg.Point3d(*target)
+        target_point = rg.Point3d(*current_target)
         target_vector = target_point - self.position  # Vector pointing to the target
         distance = target_vector.Length  # Distance to the target
 
@@ -228,14 +228,30 @@ else:
 
 # Debug output to confirm
 print(f"Flattened obstacles: {obstacles_flatten}")
+
+# Input: All potential targets
+all_targets = [target_1, target_2, target_3, target_4, target_5, target_6]
+
+# Number of targets each agent will follow
+num_targets_per_agent = 3
+
+# Randomly assign 3 targets to the agent
+agent_targets = random.sample(all_targets, num_targets_per_agent)
+
+# Add the start position as the final target
+agent_targets.append(start_position)
+
 # Agent import
 agent = Agent(srf, start_position)
 
 # Simulate agent seeking the goal
 prev_position = agent.position  # Store previous position for path tracing
 for step in range(steps):  # steps in the simulation 
+    # Get the current target
+    current_target = agent_targets[current_target_index]
+
     # Seek Target
-    agent.seek_target(target, max_speed, slow_radius)
+    agent.seek_target(current_target, max_speed, slow_radius)
 
     # Avoid Obstacles
     agent.avoid_obstacles(obstacles_flatten, avoidance_range, avoidance_factor, boost_factor, side_push_factor)
@@ -249,10 +265,15 @@ for step in range(steps):  # steps in the simulation
     Points.append(agent.position)
     prev_position = agent.position
 
-    # Stop if the agent is close enough to the target
-    if agent.dist(target) < 1:
+     # Stop if the agent is close enough to the target
+    if agent.dist(current_target) < 1:
         print("target reached!")
-        break
+        current_target_index += 1  # Move to the next target
+
+        # Break the loop if all targets are reached
+        if current_target_index >= len(agent_targets):
+            print("All assigned targets reached. Simulation complete.")
+            break
 
 # Debug print statements
 print("Simulation complete.")
