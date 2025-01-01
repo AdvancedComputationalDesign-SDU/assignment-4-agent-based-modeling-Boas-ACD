@@ -13,17 +13,10 @@ meaning this is the main component, which other helper components should go into
 """
 
 # Import necessary libraries
-import Rhino
 import rhinoscriptsyntax as rs
 import Rhino.Geometry as rg
-
-# If using Rhino/Grasshopper for visualization
-# import Rhino
-# import Rhino.Geometry as rg
-
-# Empty Lists
-Lines = []
-Points = []
+import random
+import ghpythonlib.treehelpers
 
 """
 ### Inputs
@@ -73,7 +66,7 @@ class Agent:
     
     def avoid_obstacles(self, obstacles, avoidance_range, avoidance_factor, boost_factor, side_push_factor, min_speed=0.1):
         """
-        Avoid obstacles
+        Avoid obstacles by repulsion and following obstacles edge
         """
         # Initialize cumulative repulsion and tangential force vectors
         repulsion = rg.Vector3d(0, 0, 0)
@@ -159,7 +152,6 @@ class Agent:
 
         # add the 2D avoidance force and forward boost to the current velocity
         self.velocity += total_avoidance + forward_boost
-        print(f"Step {step}: Repulsion: {repulsion}, Velocity: {self.velocity}")
 
         # Ensure minimum speed to prevent agents getting stuck
         if self.velocity.Length < min_speed:
@@ -171,41 +163,16 @@ class Agent:
             self.velocity.Unitize()
             self.velocity *= max_speed
 
-         # Optional: Print debug to ensure repulsion is accumulating from all obstacles
-        print(f"Repulsion: {repulsion}, Tangential Force: {tangential_force}, Velocity: {self.velocity}")
-
-# Simulate agent seeking the goal
-prev_position = agent.position  # Store previous position for path tracing
-for step in range(steps):  # steps in the simulation
-    agent.seek_target(target, max_speed, slow_radius)
-    agent.move()
-    # print(f"Step {step}: Agent position: {agent.position}, Distance to goal: {agent.dist(target)}")
-
-    # Visualize the agent's movement
-    Lines.append(rg.Line(prev_position, agent.position))
-    Points.append(agent.position)
-    prev_position = agent.position
-
-    # Stop if the agent is close enough to the goal
-    if agent.dist(target) < 0.1:
-        print("target reached!")
-        break
-
-# Empty Lists
-Lines = []
-Points = []
-
-print(f"Obstacles input: {obstacles}")
-
 """
+Simulate agent seeking the tartets
 ### simulation Inputs
 srf: Boundary surface
 start_position: Entry point for the agent
-target: the target which the agent shall reach
+targets: the targets which the agent shall go to
 steps: Number of steps in the simulation
-max_speed: Maximum Speed for the agent
+max_speed: Maximum travel distance for the agent per step
 slow_radius: Proximity for the agent to the target to slow down
-obstacles: geometries to be avoided
+obstacles: geometries to be avoided/walked around
 avoidance_range: distance from obstacles to avoid
 avoidance_factor: Repulsion force factor
 boost_factor: A factor to help the agent from stalling
@@ -227,91 +194,131 @@ else:
         obstacles_flatten.append(obstacles)  # Add directly if already a Curve
 
 # Debug output to confirm
-print(f"Flattened obstacles: {obstacles_flatten}")
+# print(f"Flattened obstacles: {obstacles_flatten}")
 
-# Input: All potential targets
-all_targets = [target_1, target_2, target_3, target_4, target_5, target_6]
+# Determine how many agents to assign per start position
+agents_per_start = [agents_number // len(start_positions)] * len(start_positions)
 
-# Number of targets each agent will follow
-num_targets_per_agent = 3
+# Distribute any remaining agents randomly among start positions
+remaining_agents = agents_number % len(start_positions)
+for _ in range(remaining_agents):
+    random_index = random.randint(0, len(start_positions) - 1)
+    agents_per_start[random_index] += 1
 
-# Randomly assign 3 targets to the agent
-agent_targets = random.sample(all_targets, num_targets_per_agent)
+# Initialize agents
+agents = []  # List to store all agents
+agent_id = 1  # To assign unique IDs for debugging
+for start_pos, num_agents in zip(start_positions, agents_per_start):
+    for _ in range(num_agents):
+        # Randomly assign targets to each agent
+        agent_targets = random.sample(targets, num_targets_per_agent)
+        agent_targets.append(start_pos)  # Add the starting position as the final target (to loop back)
 
-# Add the start position as the final target
-agent_targets.append(start_position)
+        # Create an agent instance
+        agent = {
+            "id": agent_id,  # Unique identifier for debugging
+            "instance": Agent(srf, start_pos),
+            "targets": agent_targets,
+            "current_target_index": 0,  # Start with the first target
+            "lines": [],  # For path visualization
+            "points": [],  # For point visualization
+            "prev_position": start_pos, # For path tracing
+            "start_position": start_pos, # store the start position
+            "finished": False, # Flag to indicate wether the agent has returned to start position
+        }
+        agents.append(agent)
+        agent_id += 1
 
-# Agent import
-agent = Agent(srf, start_position)
+# Debug: Output assigned targets for each agent
+for agent in agents:
+    print(f"Agent {agent['id']} targets: {agent['targets']}")
 
-# Simulate agent seeking the goal
-prev_position = agent.position  # Store previous position for path tracing
-for step in range(steps):  # steps in the simulation 
-    # Get the current target
-    current_target = agent_targets[current_target_index]
+# A flat list of all lines in order
+lines = []
+nested_lines = [[] for _ in range(steps)]  # Initialize a nested list for all steps
 
-    # Seek Target
-    agent.seek_target(current_target, max_speed, slow_radius)
+# Process each step in the simulation
+for step in range(steps):
+    step_lines = [] # Lines for this step
+    for agent_data in agents[:]:  # Iterate over a copy of the agents list
 
-    # Avoid Obstacles
-    agent.avoid_obstacles(obstacles_flatten, avoidance_range, avoidance_factor, boost_factor, side_push_factor)
+        # If agent is finished, skip it
+        if agent_data["finished"]:
+            continue
 
-    # Move Agent
-    agent.move()
+        agent = agent_data["instance"]
+        targets = agent_data["targets"]
+        current_target_index = agent_data["current_target_index"]
+        start_position = agent_data["start_position"]
+
+        # Ensure agent starts moving if at the start position
+        if current_target_index == 0 and agent.dist(start_position) < 1:
+            if len(targets) > 0 and agent.dist(targets[0]) > 1:
+                agent_data["current_target_index"] = 0
+            else:
+                agent_data["current_target_index"] = 1
+
+        # Handle movement toward targets
+        if current_target_index < len(targets):
+            current_target = targets[current_target_index]
+            agent.seek_target(current_target, max_speed, slow_radius)
+            agent.avoid_obstacles(
+                obstacles_flatten, avoidance_range, avoidance_factor, boost_factor, side_push_factor
+            )
+            agent.move()
+
+            # Create a line only if moving
+            if agent.dist(agent_data["prev_position"]) > 0:
+                movement_line = rg.Line(agent_data["prev_position"], agent.position)
+                lines.append(movement_line)
+                agent_data["lines"].append(movement_line)
+                step_lines.append(rg.LineCurve(movement_line))  # Add for this step
+                agent_data["prev_position"] = agent.position
+
+            # Stop if agent reaches the target
+            if agent.dist(current_target) < 1:
+                agent_data["current_target_index"] += 1
+
+        else:
+            # Move back to start position
+            if agent.dist(start_position) > 1:
+                agent.seek_target(start_position, max_speed, slow_radius)
+                agent.move()
+
+                # Create a line for movement back to start
+                if agent.dist(agent_data["prev_position"]) > 0:
+                    movement_line = rg.Line(agent_data["prev_position"], agent.position)
+                    lines.append(movement_line)
+                    agent_data["lines"].append(movement_line)
+                    step_lines.append(rg.LineCurve(movement_line))
+                    agent_data["prev_position"] = agent.position
+
+            # Mark agent as finished if it reaches the start
+            if agent.dist(start_position) < 1:
+                agent_data["finished"] = True
+                print(f"Agent {agent_data['id']} has finished its task.")
     
+    # Store this step's lines in nested structure
+    nested_lines[step] = step_lines
 
-    # Visualize the agent's movement
-    Lines.append(rg.Line(prev_position, agent.position))
-    Points.append(agent.position)
-    prev_position = agent.position
+    # Debugging step lines
+    print(f"Step {step + 1}: {len(step_lines)} lines generated.")
+        
+    # Check if all agents are done
+    all_agents_done = all(agent_data["finished"] for agent_data in agents)
+    if all_agents_done:
+        print("All agents have completed their tasks. Ending simulation.")
+        break
 
-     # Stop if the agent is close enough to the target
-    if agent.dist(current_target) < 1:
-        print("target reached!")
-        current_target_index += 1  # Move to the next target
+# Visualization for each step
+steps_visualization = ghpythonlib.treehelpers.list_to_tree(nested_lines)
 
-        # Break the loop if all targets are reached
-        if current_target_index >= len(agent_targets):
-            print("All assigned targets reached. Simulation complete.")
-            break
+# Debug final nested_lines
+for step, step_lines in enumerate(nested_lines):
+    print(f"Step {step + 1}: {len(step_lines)} lines")
+    for i, line in enumerate(step_lines):
+        print(f"  Line {i + 1}: {line}")
 
-# Debug print statements
+# Output to Grasshopper
+nested_lines = steps_visualization
 print("Simulation complete.")
-print(f"Final Agent Position: {agent.position}")
-
-# Define additional classes if needed (e.g., Environment, Obstacle)
-
-# # Simulation parameters
-# num_agents = 100  # Number of agents
-# num_steps = 100   # Number of simulation steps
-# agents = []       # List to hold agent instances
-
-# # Initialize agents
-# for i in range(num_agents):
-#     # Initialize agents with random positions and velocities
-#     position = (random.uniform(0, 10), random.uniform(0, 10), random.uniform(0, 10))
-#     velocity = (random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))
-#     agent = Agent(position, velocity)
-#     agents.append(agent)
-
-# # Simulation loop
-# for step in range(num_steps):
-#     # Update each agent
-#     for agent in agents:
-#         agent.interact(agents)
-#         agent.move()
-#         agent.update()
-
-#     # TODO: Collect data or update visualization
-#     # For example, append agent positions to a list for plotting
-
-# # After simulation, process results
-# # TODO: Generate geometry or visualization based on agent data
-
-# # Visualization code (if using Rhino/Grasshopper)
-# # For example, create points or lines based on agent positions
-
-# # Output variables (connect to Grasshopper outputs if applicable)
-# # agent_positions = [agent.position for agent in agents]
-
-# # If running as a standalone script, include visualization using matplotlib or other libraries
