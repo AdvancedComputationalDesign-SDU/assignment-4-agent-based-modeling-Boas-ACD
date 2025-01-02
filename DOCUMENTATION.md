@@ -64,9 +64,12 @@
 
 - **Object-Oriented Design**
 
-  - Explain the classes you designed and why.
-  - Discuss how you applied OOP principles like encapsulation, inheritance, and polymorphism.
-  - Describe how the classes interact within the simulation.
+  - Created an Agent class, which consists of agent that are able to avoid obstacles on their way to reach a target. The idea was to create a flow simulation, like a 
+    pedestrian simulation, where agents have to go from point A to B with some obstacles in the way.
+  - I tried appliyng OOP principles primarily through inheritance & modularity. Where the agent class has these defined functions, which will inherit data from the agents 
+    during the simulation, both with current position, current targets and obstacle avoidance.
+  - The agent class interacts with the simulation primarily by having to keep checking and updating both the inherited and the currently aquired data, to see if it has to 
+    change it behaivor in some cases.
 
 - **Agent Behaviors and Interactions**
 
@@ -142,37 +145,34 @@
 
 ## Challenges and Solutions
 
-*(Discuss any challenges you faced during the assignment and how you overcame them.)*
+- **Challenge 1**: Agents encountering an obstacle, being repelled back, each time shortening the agent speed so the agent ends up stalled at the obstacle.
+  - **Solution**: Implemented minimum & maximum agent speed + a forward boost, to ensure the agent moves within a range and avoids stopping.
 
-### Examples:
+- **Challenge 2**: Agents getting stuck on an obstacle, because it will be repelled back and then go forward again, bouncing of the obstacle instead of going around it .
+  - **Solution**: Added a side-push factor, which will push the agent along the tangent of the repelling force, ensuring it goes around the obstacle.
 
-- **Challenge 1**: Managing large numbers of agents efficiently.
-  - **Solution**: Implemented spatial partitioning to reduce computation time.
+- **Challenge 3**: Obstacles creating a grafted simulation, meaning 1 agent could only react to a single obstacle, creating a simulation instance for each obstacle.
+  - **Solution**: Implemented a check to see if obstacle input was a list and if not made it a list.
 
-- **Challenge 2**: Agents getting stuck or clustering unnaturally.
-  - **Solution**: Adjusted interaction rules and added collision avoidance behaviors.
+- **Challenge 4**: Input geometry not readable in grasshopper.
+  - **Solution**: Implementing a check for the input Rectangle3D and converting it to a readable Nurbs curve.
 
-- **Challenge 3**: Visualizing the simulation in real-time.
-  - **Solution**: Used efficient data structures and optimized rendering techniques.
+- **Challenge 5**: Sorting output lines, based on step.
+  - **Solution**: Implemented a nested list, which would sort the lines based on steps in the simulation. Lastly using converting the outpu to a data tree, which could be viewed in Grasshopper.
 
 ---
 
 ## References
 
-*(List any resources you used or found helpful during the assignment.)*
+- **Initial Inspiration**
+  - [Japanese Train Fungus](https://blogs.ubc.ca/communicatingscience2017w211/2018/01/29/brainless-slime-mold-grows-in-pattern-like-tokyos-subway-system/)
+  - [Integrated Development](https://www.brettparris.com/abm/)
+  - [Grasshopper Plugin: H.I.V.E](https://www.food4rhino.com/en/app/hive-0)
 
-- **Object-Oriented Programming**
+- **Trouble Shooting**
 
-  - [Python Official Documentation](https://docs.python.org/3/tutorial/classes.html)
-  - [Real Python - OOP in Python](https://realpython.com/python3-object-oriented-programming/)
-
-- **Agent-Based Modeling**
-
-  - [Mesa: Agent-Based Modeling in Python](https://mesa.readthedocs.io/en/master/)
-  - [Agent-Based Models in Architecture](https://www.researchgate.net/publication/279218265_Agent-based_models_in_architecture_new_possibilities_of_interscalar_design)
-
----
-
-*(Feel free to expand upon these sections to fully capture your work and learning process.)*
+  - [Grasshopper Forums](https://www.grasshopper3d.com/forum)
+  - [Rhino Forums](https://discourse.mcneel.com)
+  - [Chatgpt: Errors, explainations, etc.](https://chatgpt.com)
 
 ---
