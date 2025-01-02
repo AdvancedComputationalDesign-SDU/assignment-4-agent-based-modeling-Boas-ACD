@@ -58,10 +58,6 @@
 
 ## Technical Explanation
 
-*(Provide a concise explanation of your code, focusing on how you implemented OOP principles and agent-based modeling. Discuss how your approach generates the final structural patterns and the mathematical or computational principles involved.)*
-
-### Topics to Cover:
-
 - **Object-Oriented Design**
 
   - Created an Agent class, which consists of agent that are able to avoid obstacles on their way to reach a target. The idea was to create a flow simulation, like a 
