@@ -5,11 +5,11 @@ Author: Boas Olesen
 
 Description:
 This script implements an agent-based model using Object-Oriented Programming (OOP) principles.
-It simulates the behavior of shoppers (agents) to generate flow patterns, exploring how changes in
+It simulates the behavior of agents to generate flow patterns, exploring how changes in
 rules and parameters affect the resulting flow in a pedestrian patterns.
 
-Note: This script is being developed within Grasshopper's Python scripting component, 
-meaning this is the main component, which other helper components should go into.
+Note: This script has been developed within Grasshopper's Python scripting component, 
+meaning that this script is supposed to be imported (copied) into grasshopper and may not work in VS Code
 """
 
 # Import necessary libraries

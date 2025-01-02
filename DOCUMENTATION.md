@@ -12,48 +12,47 @@
 
 ## Pseudo-Code
 
-*(Provide detailed pseudo-code explaining the logic of your program. Outline your classes, their methods, and how they interact to produce the final model.)*
-
-### Example Structure:
-
 1. **Main Simulation Loop**
 
    - **Initialize Agents**:
-     - Create instances of the Agent class with initial positions and velocities.
+     - Create instances of the Agent class with initial start positions, possible targets and agent speed & agent number.
    - **Simulation Steps**:
      - For each time step:
        - **Agent Interactions**:
-         - Agents interact with other agents and the environment.
+         - Agents interact with Targets & obstacles in the environment.
        - **Agent Movement**:
          - Agents update their positions based on their velocities.
+       - **Agent Target Updates**:
+         - Agents updates their targets.
        - **Agent State Updates**:
-         - Agents update any internal states or attributes.
+         - Agents updates their attributes.
        - **Data Collection**:
-         - Record agent positions or other relevant data for visualization.
+         - Record agent positions, path, targets & directions.
 
 2. **Agent Class**
 
    - **Attributes**:
      - position: The agent's position in space.
      - velocity: The agent's velocity vector.
-     - Other attributes as needed (e.g., state, neighbors).
+     - srf: The agent's boundary surface
+     - avoidance_direction: Keeps track of which direction an agent has taken to go around an obstacle
 
    - **Methods**:
-     - **move()**:
-       - Updates the agent's position based on its velocity and other factors.
-     - **interact(agents)**:
-       - Defines how the agent interacts with other agents.
+     - **Distance**:
+       - Calculates distance between agent & target.
+     - **Move**:
+       - Moves the agent by adding velocity to position.
        - May include calculating forces, changing direction, or altering state.
-     - **update()**:
-       - Updates the agent's internal state after interactions and movement.
-
-3. **Additional Classes** (if applicable)
-
-   - **Environment**:
-     - Represents the simulation environment.
-     - May include methods for adding obstacles or boundaries.
-   - **Obstacle**:
-     - Represents obstacles in the environment that agents interact with.
+     - **Seek_target**:
+       - Checks if distance > 0, then go towards target at max speed.
+       - Also checks if distance < slow_radius, then it lowers agent speed.
+     - **avoid_obstacles**
+       - Converts input Rectangle3D to readable curves
+       - Checks if an agent is within obstacle avoidance range. if true it will repel the agent away from & push it tangentially away from the obstacle.
+       - When an agent is being repelled, it will randomly chose either left or right and using the avoidance_direction attribute, the agent will keep this 
+         direction while within the extended avoidance radius.
+       - When an agent leaves the extended avoidance range, the direction attribute is reset to None. 
+       - Added Minimum, Maximum agent speed & a forward boost, to avoid agent stalling during loops. 
 
 ---
 
@@ -71,60 +70,73 @@
 
 - **Agent Behaviors and Interactions**
 
-  - Describe the rules governing agent behaviors.
-  - Explain how agents interact with each other and the environment.
-  - Discuss any algorithms or decision-making processes implemented.
+  - The main goal for an agent is to reach it's targets. 
+    It will start from a start position and get a list of x randomly chosen targets from the targets input, which populate the input surface. These targets are put in a list, so the agent will seek them out after eachother. The agent checks if the distance between the agent position and the target position is within a threshold and will then continue to the next target. After all targets on the list have been reached, the agent will return to its start position and be finished.
+
+  - The agents doesn't have any interations between eachother, but they do react to the environment, in this case obstacles placed inside the boundary. The way the agents interact 
+    with the obstacles is by checking if they are within an avoidance range of the obstacle. It does this by converting the input obstacle (Rectangle3D) and using closestpoint, checks the distance between the agent and the obstacle. If the agent is within this range and stays within an extended avoidance range, it will try and go around the obstacle. It does this by a combination of being repelled away backwards from the obstacle and pushed sideways. This is calculated by having the vector between the agent and the closest point being the repelling force and the tangentvector being the side push. this makes the agent encounter an obstacle and then go around it by following along its edge. 
+
+  - There is a decision making process, which happens when the agent has to go around an obstacle. The decision lies in wether to go left or right around it. 
+    This is also where the 2 different ranges (avoidance & extended) plays a role. Because the agent will decide randomly between going left or right (1/-1), this is then multiplied to the tangent vector. While the agent is still within the avoidance range and will remember this decision for as long as it keeps within the extended range. Once it goes outside the extended range the decision attribute will be reset to None, until next encounter with an obstacle.
 
 - **Simulation Loop**
 
-  - Explain how the simulation evolves over time.
-  - Describe how time-stepping or iteration is handled.
-  - Discuss any performance considerations.
+  - While the simulation is running the agents have a few things they check each step
+    - Reached target: The agent will check wether it is within a tolerance range of its target, if reached it will then seek out the next target on the list. 
+    - Reached all targets: If all target have been reached the agent will seek out its start position. When reached the agent will stop being a part of the simulation
+    - Obstacle avoidance range: The agent will check if it has encountered an obstacle, if true, it will then choose a direction and be repelled follow this direction while 
+      within the extended range.
+    - Obstacle extended range: The agent will check if it is still within the extended range. while true it will keep following the obstacle edge to go around the obstacle. 
+      When it goes outside the range, it will reset the direction decision and go towards its intended target.   
+  - Limititations
+    - With the current avoidance logic, it is rather limited which geometry can be obstacles, as it relies on the tanget to push the agent around the obstacle
+      - Corners will produce a circular path for the agent, in which it will keep going into the wall, be repelled back, and the go back into the wall.
+      - more freeform shapes would also have to be accounted for by having the tangent be updated each iteration, compared to tracking the same direction until the agent 
+        is outside the affected range.
+    - If the agent speed is to great or small. 
+      - If the agent speed is to great, the agent will simply go through obstacles, since it will go over the avoidance range.
+      - If the agent speed is to low, the agent can stall, if it gets repelled more backwards, instead of to the side. Mening it will lose a bit of speed over each iteration,
+        which will stack and end with agent having no travel distance at all.
 
 - **Visualization**
 
-  - Explain how the agent data is used to generate the final models.
-  - Discuss any visualization techniques or tools used.
+  - The agent data is stored for each step in the simulation in a flattened list of lines. These lines show the agents path tracing 
+  - These lines are then sorted into a nested list which corresponds so each sublist has the lines from a step. This can be connected to the Tree Branch component, so each step 
+    in the simulation can be viewed and extracted to compile a Gif.
+  - Visualization techniques
+    - Using grasshopper innate visualization components, it is possible to visualize both the agents and the path they have travelled, just from the list of lines and the nested list of lines.
+      - For the agents, start positions & targets, creating circles on the points which can be colored by custom preview.
+      - For the Obstacles, creating surfaces from the rectangles which can be colored by custom preview.
 
 ---
 
-## Design Variations
+## Design Visualization
 
-*(Include images and descriptions of your generated design variations. For each variation, discuss the parameters or rules changed and the impact on the resulting patterns.)*
+1. **Visualization 1: [Simulation_GIF]**
 
-### Variation Examples
-
-1. **Variation 1: [Name/Description]**
-
-   ![Variation 1](images/variation1.jpg)
+   ![gif](images/Simulation_GIF/Simulation_GIF.gif)
+   ![Path Tracing](images/Path_Tracing/Path_Tracing.png)
+   ![Grasshopper Canvas](images/Grasshopper_Canvas/Grasshopper_Canvas.png)
 
    - **Parameters Changed**:
-     - interaction_radius: [Value]
-     - alignment_strength: [Value]
+     - srf: [Surface]
+     - start_position: [Points]
+     - agents_number: [10]
+     - targets: [Points]
+     - num_targets_per_agent: [3]
+     - steps: [100]
+     - max_speed: [2.6]
+     - slow_radius: [2]
+     - obstacles: [Rectangle3D]
+     - avoidance_range: [3]
+     - avoidance_factor: [2]
+     - boost_factor: [0.2]
+     - side_psh_factor: [10]
+     
    - **Description**:
-     - Describe how these changes affected agent behaviors and the final pattern.
-
-2. **Variation 2: [Name/Description]**
-
-   ![Variation 2](images/variation2.jpg)
-
-   - **Parameters Changed**:
-     - cohesion_factor: [Value]
-     - separation_distance: [Value]
-   - **Description**:
-     - Discuss the observed changes in the model.
-
-3. **Variation 3: [Name/Description]**
-
-   ![Variation 3](images/variation3.jpg)
-
-   - **Parameters Changed**:
-     - randomness: [Value]
-     - environmental_influence: [Value]
-   - **Description**:
-     - Explain how the introduction of randomness or environmental factors impacted the results.
-
-*(Add more variations as needed.)*
+     - A gif of the simulation
+     - An image of the path tracing for the agents
+     - An image of the grasshopper canvas, to show both how some of the geometric inputs and outputs were made. 
 
 ---
 
@@ -158,12 +170,6 @@
 
   - [Mesa: Agent-Based Modeling in Python](https://mesa.readthedocs.io/en/master/)
   - [Agent-Based Models in Architecture](https://www.researchgate.net/publication/279218265_Agent-based_models_in_architecture_new_possibilities_of_interscalar_design)
-
-- **Visualization Tools**
-
-  - [Rhino.Python Guides](https://developer.rhino3d.com/guides/rhinopython/)
-  - [matplotlib](https://matplotlib.org/)
-  - [Blender Python API](https://docs.blender.org/api/current/)
 
 ---
 
